@@ -5,12 +5,12 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/homecraft_db
     username: postgres
-    password: yourpassword
+    password: 1234
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create  # Changed from 'update' to 'create' to recreate tables
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -20,8 +20,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: your-email@gmail.com
-    password: your-app-password
+    username: kavishkadewduni@gmail.com
+    password: jvbs ynfx rbgi yorb
     properties:
       mail:
         smtp:
