@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PortfolioItemResponse {
-
     private Long id;
     private String title;
     private String description;
