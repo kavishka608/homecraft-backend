@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReviewResponse {
-
     private Long id;
     private Long projectId;
     private String projectTitle;
-    private UserResponse reviewer;
-    private ProfessionalResponse professional;
+    private ClientProfileResponse client;
+    private ProfessionalProfileResponse professional;
     private Integer rating;
     private String comment;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -25,6 +25,10 @@ public class Project {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
+    @ManyToOne
+    @JoinColumn(name = "professional_id")
+    private Professional professional;
+
     @Column(nullable = false)
     private String title;
 

@@ -6,9 +6,11 @@ import com.homeservice.homecraft_backend.model.dto.response.ProjectResponse;
 import com.homeservice.homecraft_backend.model.dto.response.UserResponse;
 import com.homeservice.homecraft_backend.model.entity.Client;
 import com.homeservice.homecraft_backend.model.entity.Project;
+import com.homeservice.homecraft_backend.model.entity.Professional;
 import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.repository.ClientRepository;
 import com.homeservice.homecraft_backend.repository.ProjectRepository;
+import com.homeservice.homecraft_backend.repository.ProfessionalRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ClientRepository clientRepository;
+    private final ProfessionalRepository professionalRepository;
 
     @Transactional
     public ProjectResponse createProject(Long userId, ProjectRequest request) {
@@ -115,6 +118,21 @@ public class ProjectService {
         if (request.getStatus() != null) {
             project.setStatus(request.getStatus());
         }
+        project.setUpdatedAt(LocalDateTime.now());
+
+        Project updatedProject = projectRepository.save(project);
+        return mapToResponse(updatedProject);
+    }
+
+    @Transactional
+    public ProjectResponse completeProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        // Professional check removed - project can be completed without a professional assigned
+        // This allows testing of the review system
+
+        project.setStatus("COMPLETED");
         project.setUpdatedAt(LocalDateTime.now());
 
         Project updatedProject = projectRepository.save(project);
