@@ -10,6 +10,8 @@ import com.homeservice.homecraft_backend.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import com.homeservice.homecraft_backend.model.dto.request.ProjectSearchRequest;
 
 import java.util.List;
 
@@ -86,6 +88,13 @@ public class ProjectController {
             @RequestHeader("Authorization") String authHeader) {
         ProjectResponse project = projectService.completeProject(id);
         return ResponseEntity.ok(ApiResponse.success("Project completed successfully", project));
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<ApiResponse<Page<ProjectResponse>>> searchProjects(
+            @RequestBody ProjectSearchRequest request) {
+        Page<ProjectResponse> projects = projectService.searchProjects(request);
+        return ResponseEntity.ok(ApiResponse.success("Projects retrieved successfully", projects));
     }
 
     @DeleteMapping("/{id}")

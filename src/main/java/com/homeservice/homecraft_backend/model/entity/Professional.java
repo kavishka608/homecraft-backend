@@ -67,7 +67,8 @@ public class Professional {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "professional", cascade = CascadeType.ALL)
+    // Portfolio items relationship - ONLY ONE definition
+    @OneToMany(mappedBy = "professional", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PortfolioItem> portfolioItems = new ArrayList<>();
 
     @PrePersist

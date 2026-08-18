@@ -5,6 +5,10 @@ import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.model.enums.VerificationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +19,5 @@ public interface ProfessionalRepository extends JpaRepository<Professional, Long
     List<Professional> findByProfessionalType(ProfessionalType type);
     List<Professional> findByVerificationStatus(VerificationStatus status);
     List<Professional> findByIsAvailableTrue();
+    Page<Professional> findAll(Specification<Professional> spec, Pageable pageable);
 }

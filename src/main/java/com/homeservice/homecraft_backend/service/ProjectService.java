@@ -1,6 +1,7 @@
 package com.homeservice.homecraft_backend.service;
 
 import com.homeservice.homecraft_backend.model.dto.request.ProjectRequest;
+import com.homeservice.homecraft_backend.model.dto.request.ProjectSearchRequest;
 import com.homeservice.homecraft_backend.model.dto.request.ProjectUpdateRequest;
 import com.homeservice.homecraft_backend.model.dto.response.ProjectResponse;
 import com.homeservice.homecraft_backend.model.dto.response.UserResponse;
@@ -12,6 +13,11 @@ import com.homeservice.homecraft_backend.repository.ClientRepository;
 import com.homeservice.homecraft_backend.repository.ProjectRepository;
 import com.homeservice.homecraft_backend.repository.ProfessionalRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -129,9 +135,6 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        // Professional check removed - project can be completed without a professional assigned
-        // This allows testing of the review system
-
         project.setStatus("COMPLETED");
         project.setUpdatedAt(LocalDateTime.now());
 
@@ -144,6 +147,77 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         projectRepository.delete(project);
+    }
+
+    // NEW: Search projects with filters - FIXED
+    public Page<ProjectResponse> searchProjects(ProjectSearchRequest request) {
+        Specification<Project> spec = (root, query, cb) -> cb.conjunction(); // Start with true condition
+
+        // Filter by keyword (title, description)
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                String keyword = "%" + request.getKeyword().toLowerCase() + "%";
+                return cb.or(
+                        cb.like(cb.lower(root.get("title")), keyword),
+                        cb.like(cb.lower(root.get("description")), keyword)
+                );
+            });
+        }
+
+        // Filter by project type
+        if (request.getProjectType() != null && !request.getProjectType().isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(cb.lower(root.get("projectType")), request.getProjectType().toLowerCase())
+            );
+        }
+
+        // Filter by professional type needed
+        if (request.getProfessionalTypeNeeded() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("professionalTypeNeeded"), request.getProfessionalTypeNeeded())
+            );
+        }
+
+        // Filter by location
+        if (request.getLocation() != null && !request.getLocation().isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.like(cb.lower(root.get("location")), "%" + request.getLocation().toLowerCase() + "%")
+            );
+        }
+
+        // Filter by min budget
+        if (request.getMinBudget() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("budgetMin"), request.getMinBudget())
+            );
+        }
+
+        // Filter by max budget
+        if (request.getMaxBudget() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("budgetMax"), request.getMaxBudget())
+            );
+        }
+
+        // Filter by status
+        if (request.getStatus() != null && !request.getStatus().isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(cb.upper(root.get("status")), request.getStatus().toUpperCase())
+            );
+        }
+
+        // Sort
+        Sort sort = Sort.unsorted();
+        if (request.getSortBy() != null && !request.getSortBy().isEmpty()) {
+            Sort.Direction direction = "desc".equalsIgnoreCase(request.getSortDirection())
+                    ? Sort.Direction.DESC : Sort.Direction.ASC;
+            sort = Sort.by(direction, request.getSortBy());
+        }
+
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+        Page<Project> projects = projectRepository.findAll(spec, pageable);
+
+        return projects.map(this::mapToResponse);
     }
 
     private ProjectResponse mapToResponse(Project project) {

@@ -1,14 +1,19 @@
 package com.homeservice.homecraft_backend.service;
 
 import com.homeservice.homecraft_backend.model.dto.request.ProfessionalProfileUpdateRequest;
-import com.homeservice.homecraft_backend.model.dto.response.ProfessionalProfileResponse;  // ← ADD THIS
-import com.homeservice.homecraft_backend.model.dto.response.PortfolioItemResponse;       // ← ADD THIS
+import com.homeservice.homecraft_backend.model.dto.request.ProfessionalSearchRequest;
+import com.homeservice.homecraft_backend.model.dto.response.ProfessionalProfileResponse;
 import com.homeservice.homecraft_backend.model.entity.Professional;
 import com.homeservice.homecraft_backend.model.entity.User;
 import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.repository.ProfessionalRepository;
 import com.homeservice.homecraft_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +28,7 @@ public class ProfessionalService {
     private final ProfessionalRepository professionalRepository;
     private final UserRepository userRepository;
 
+    // Existing methods
     public ProfessionalProfileResponse getProfessionalById(Long id) {
         Professional professional = professionalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Professional not found"));
@@ -107,6 +113,85 @@ public class ProfessionalService {
         return mapToResponse(updatedProfessional);
     }
 
+    // NEW: Search professionals with filters
+    public Page<ProfessionalProfileResponse> searchProfessionals(ProfessionalSearchRequest request) {
+        Specification<Professional> spec = (root, query, cb) -> cb.conjunction(); // Start with true condition
+
+        // Filter by keyword (name, bio, location)
+        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                String keyword = "%" + request.getKeyword().toLowerCase() + "%";
+                return cb.or(
+                        cb.like(cb.lower(root.get("user").get("fullName")), keyword),
+                        cb.like(cb.lower(root.get("bio")), keyword),
+                        cb.like(cb.lower(root.get("location")), keyword)
+                );
+            });
+        }
+
+        // Filter by professional type
+        if (request.getProfessionalType() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("professionalType"), request.getProfessionalType())
+            );
+        }
+
+        // Filter by location
+        if (request.getLocation() != null && !request.getLocation().isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.like(cb.lower(root.get("location")), "%" + request.getLocation().toLowerCase() + "%")
+            );
+        }
+
+        // Filter by min rating
+        if (request.getMinRating() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("ratingAverage"), request.getMinRating())
+            );
+        }
+
+        // Filter by max rating
+        if (request.getMaxRating() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("ratingAverage"), request.getMaxRating())
+            );
+        }
+
+        // Filter by min hourly rate
+        if (request.getMinHourlyRate() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("hourlyRate"), request.getMinHourlyRate())
+            );
+        }
+
+        // Filter by max hourly rate
+        if (request.getMaxHourlyRate() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("hourlyRate"), request.getMaxHourlyRate())
+            );
+        }
+
+        // Filter by availability
+        if (request.getIsAvailable() != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("isAvailable"), request.getIsAvailable())
+            );
+        }
+
+        // Sort
+        Sort sort = Sort.unsorted();
+        if (request.getSortBy() != null && !request.getSortBy().isEmpty()) {
+            Sort.Direction direction = "desc".equalsIgnoreCase(request.getSortDirection())
+                    ? Sort.Direction.DESC : Sort.Direction.ASC;
+            sort = Sort.by(direction, request.getSortBy());
+        }
+
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+        Page<Professional> professionals = professionalRepository.findAll(spec, pageable);
+
+        return professionals.map(this::mapToResponse);
+    }
+
     private ProfessionalProfileResponse mapToResponse(Professional professional) {
         ProfessionalProfileResponse response = new ProfessionalProfileResponse();
         response.setId(professional.getId());
@@ -125,6 +210,26 @@ public class ProfessionalService {
         response.setVerificationStatus(professional.getVerificationStatus());
         response.setProfilePicture(professional.getProfilePicture());
         response.setCreatedAt(professional.getCreatedAt());
+
+        // Map portfolio items
+        if (professional.getPortfolioItems() != null && !professional.getPortfolioItems().isEmpty()) {
+            response.setPortfolioItems(
+                    professional.getPortfolioItems().stream()
+                            .map(item -> {
+                                com.homeservice.homecraft_backend.model.dto.response.PortfolioItemResponse portfolioResponse =
+                                        new com.homeservice.homecraft_backend.model.dto.response.PortfolioItemResponse();
+                                portfolioResponse.setId(item.getId());
+                                portfolioResponse.setTitle(item.getTitle());
+                                portfolioResponse.setDescription(item.getDescription());
+                                portfolioResponse.setImageUrl(item.getImageUrl());
+                                portfolioResponse.setProjectType(item.getProjectType());
+                                portfolioResponse.setCreatedAt(item.getCreatedAt());
+                                return portfolioResponse;
+                            })
+                            .collect(Collectors.toList())
+            );
+        }
+
         return response;
     }
 }

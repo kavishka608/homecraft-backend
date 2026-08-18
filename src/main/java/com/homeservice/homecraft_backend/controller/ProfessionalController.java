@@ -2,12 +2,14 @@ package com.homeservice.homecraft_backend.controller;
 
 import com.homeservice.homecraft_backend.model.dto.request.AvailabilityUpdateRequest;
 import com.homeservice.homecraft_backend.model.dto.request.ProfessionalProfileUpdateRequest;
+import com.homeservice.homecraft_backend.model.dto.request.ProfessionalSearchRequest;
 import com.homeservice.homecraft_backend.model.dto.response.ApiResponse;
-import com.homeservice.homecraft_backend.model.dto.response.ProfessionalProfileResponse;  // ← ADD THIS IMPORT
+import com.homeservice.homecraft_backend.model.dto.response.ProfessionalProfileResponse;
 import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.service.ProfessionalService;
 import com.homeservice.homecraft_backend.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +23,7 @@ public class ProfessionalController {
     private final ProfessionalService professionalService;
     private final JwtUtil jwtUtil;
 
-    // Public endpoints (no authentication required)
-
+    // Public endpoints
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProfessionalProfileResponse>>> getAllProfessionals() {
         List<ProfessionalProfileResponse> professionals = professionalService.getAllProfessionals();
@@ -48,8 +49,15 @@ public class ProfessionalController {
         return ResponseEntity.ok(ApiResponse.success("Professional retrieved successfully", professional));
     }
 
-    // Protected endpoints (JWT required)
+    // SEARCH PROFESSIONALS ENDPOINT - ADD THIS
+    @PostMapping("/search")
+    public ResponseEntity<ApiResponse<Page<ProfessionalProfileResponse>>> searchProfessionals(
+            @RequestBody ProfessionalSearchRequest request) {
+        Page<ProfessionalProfileResponse> professionals = professionalService.searchProfessionals(request);
+        return ResponseEntity.ok(ApiResponse.success("Professionals retrieved successfully", professionals));
+    }
 
+    // Protected endpoints
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<ProfessionalProfileResponse>> getMyProfile(
             @RequestHeader("Authorization") String authHeader) {
