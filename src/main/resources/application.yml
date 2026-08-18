@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create  # Changed from 'update' to 'create' to recreate tables
+      ddl-auto: update  # Changed from 'update' to 'create' to recreate tables
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

@@ -65,9 +65,12 @@ public class AuthService {
         } else if (request.getRole() == UserRole.CLIENT) {
             Client client = new Client();
             client.setUser(savedUser);
+            client.setAddress(null);
+            client.setPreferredContactMethod("EMAIL");
             client.setCreatedAt(LocalDateTime.now());
             client.setUpdatedAt(LocalDateTime.now());
             clientRepository.save(client);
+            System.out.println("Client saved with ID: " + client.getId());
         }
 
         // Generate JWT token
