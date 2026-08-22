@@ -8,6 +8,7 @@ import com.homeservice.homecraft_backend.model.entity.Client;
 import com.homeservice.homecraft_backend.model.entity.Professional;
 import com.homeservice.homecraft_backend.model.entity.Project;
 import com.homeservice.homecraft_backend.model.entity.Review;
+import com.homeservice.homecraft_backend.model.entity.User;
 import com.homeservice.homecraft_backend.repository.ClientRepository;
 import com.homeservice.homecraft_backend.repository.ProfessionalRepository;
 import com.homeservice.homecraft_backend.repository.ProjectRepository;
@@ -28,6 +29,7 @@ public class ReviewService {
     private final ProjectRepository projectRepository;
     private final ClientRepository clientRepository;
     private final ProfessionalRepository professionalRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public ReviewResponse addReview(Long projectId, Long userId, ReviewRequest request) {
@@ -76,6 +78,17 @@ public class ReviewService {
 
         // Update professional's average rating
         updateProfessionalRating(professional.getId());
+
+        // Send notification to professional about new review
+        User professionalUser = professional.getUser();
+        notificationService.notifyNewReview(
+                professionalUser.getId(),
+                professionalUser.getEmail(),
+                professionalUser.getFullName(),
+                project.getTitle(),
+                request.getRating(),
+                savedReview.getId()
+        );
 
         return mapToResponse(savedReview);
     }

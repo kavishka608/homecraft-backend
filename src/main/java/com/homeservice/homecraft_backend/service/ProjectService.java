@@ -8,6 +8,7 @@ import com.homeservice.homecraft_backend.model.dto.response.UserResponse;
 import com.homeservice.homecraft_backend.model.entity.Client;
 import com.homeservice.homecraft_backend.model.entity.Project;
 import com.homeservice.homecraft_backend.model.entity.Professional;
+import com.homeservice.homecraft_backend.model.entity.User;
 import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.repository.ClientRepository;
 import com.homeservice.homecraft_backend.repository.ProjectRepository;
@@ -32,6 +33,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ClientRepository clientRepository;
     private final ProfessionalRepository professionalRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public ProjectResponse createProject(Long userId, ProjectRequest request) {
@@ -139,6 +141,19 @@ public class ProjectService {
         project.setUpdatedAt(LocalDateTime.now());
 
         Project updatedProject = projectRepository.save(project);
+
+        // Send notification to professional if assigned
+        if (project.getProfessional() != null) {
+            User professional = project.getProfessional().getUser();
+            notificationService.notifyProjectCompleted(
+                    professional.getId(),
+                    professional.getEmail(),
+                    professional.getFullName(),
+                    project.getTitle(),
+                    project.getId()
+            );
+        }
+
         return mapToResponse(updatedProject);
     }
 
@@ -149,9 +164,9 @@ public class ProjectService {
         projectRepository.delete(project);
     }
 
-    // NEW: Search projects with filters - FIXED
+    // Search projects with filters
     public Page<ProjectResponse> searchProjects(ProjectSearchRequest request) {
-        Specification<Project> spec = (root, query, cb) -> cb.conjunction(); // Start with true condition
+        Specification<Project> spec = (root, query, cb) -> cb.conjunction();
 
         // Filter by keyword (title, description)
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {

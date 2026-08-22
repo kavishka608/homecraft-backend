@@ -1,5 +1,6 @@
 package com.homeservice.homecraft_backend.model.entity;
 
+import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.model.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -37,6 +38,18 @@ public class User implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     private UserRole role;
+
+    // NEW FIELDS ADDED HERE
+    @Enumerated(EnumType.STRING)
+    private ProfessionalType professionalType;
+
+    private Integer yearsExperience;
+
+    @Column(length = 500)
+    private String bio;
+
+    private String location;
+    // END NEW FIELDS
 
     @Column(name = "is_verified")
     private boolean isVerified = false;

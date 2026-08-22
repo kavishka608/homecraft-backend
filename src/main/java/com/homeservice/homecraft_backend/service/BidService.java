@@ -6,6 +6,7 @@ import com.homeservice.homecraft_backend.model.dto.response.ProfessionalProfileR
 import com.homeservice.homecraft_backend.model.entity.Bid;
 import com.homeservice.homecraft_backend.model.entity.Professional;
 import com.homeservice.homecraft_backend.model.entity.Project;
+import com.homeservice.homecraft_backend.model.entity.User;
 import com.homeservice.homecraft_backend.model.enums.BidStatus;
 import com.homeservice.homecraft_backend.repository.BidRepository;
 import com.homeservice.homecraft_backend.repository.ProfessionalRepository;
@@ -25,6 +26,7 @@ public class BidService {
     private final BidRepository bidRepository;
     private final ProjectRepository projectRepository;
     private final ProfessionalRepository professionalRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public BidResponse submitBid(Long projectId, Long userId, BidRequest request) {
@@ -58,6 +60,19 @@ public class BidService {
         bid.setUpdatedAt(LocalDateTime.now());
 
         Bid savedBid = bidRepository.save(bid);
+
+        // Send notification to client about new bid
+        User client = project.getClient().getUser();
+        notificationService.notifyNewBid(
+                client.getId(),
+                client.getEmail(),
+                client.getFullName(),
+                professional.getUser().getFullName(),
+                project.getTitle(),
+                request.getBidAmount().doubleValue(),
+                project.getId()
+        );
+
         return mapToResponse(savedBid);
     }
 
@@ -99,7 +114,7 @@ public class BidService {
         // Update project status to IN_PROGRESS and assign professional
         Project project = bid.getProject();
         project.setStatus("IN_PROGRESS");
-        project.setProfessional(bid.getProfessional());  // ← ASSIGN PROFESSIONAL TO PROJECT
+        project.setProfessional(bid.getProfessional());
         project.setUpdatedAt(LocalDateTime.now());
         projectRepository.save(project);
 
@@ -110,8 +125,28 @@ public class BidService {
                 otherBid.setStatus(BidStatus.REJECTED);
                 otherBid.setUpdatedAt(LocalDateTime.now());
                 bidRepository.save(otherBid);
+
+                // Send notification to professional about bid rejection
+                User otherProfessional = otherBid.getProfessional().getUser();
+                notificationService.notifyBidRejected(
+                        otherProfessional.getId(),
+                        otherProfessional.getEmail(),
+                        otherProfessional.getFullName(),
+                        project.getTitle(),
+                        project.getId()
+                );
             }
         }
+
+        // Send notification to professional about bid acceptance
+        User professional = bid.getProfessional().getUser();
+        notificationService.notifyBidAccepted(
+                professional.getId(),
+                professional.getEmail(),
+                professional.getFullName(),
+                project.getTitle(),
+                project.getId()
+        );
 
         return mapToResponse(savedBid);
     }
@@ -128,6 +163,17 @@ public class BidService {
         bid.setStatus(BidStatus.REJECTED);
         bid.setUpdatedAt(LocalDateTime.now());
         Bid savedBid = bidRepository.save(bid);
+
+        // Send notification to professional about bid rejection
+        Project project = bid.getProject();
+        User professional = bid.getProfessional().getUser();
+        notificationService.notifyBidRejected(
+                professional.getId(),
+                professional.getEmail(),
+                professional.getFullName(),
+                project.getTitle(),
+                project.getId()
+        );
 
         return mapToResponse(savedBid);
     }

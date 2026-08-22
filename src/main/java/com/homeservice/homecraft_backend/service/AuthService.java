@@ -62,7 +62,7 @@ public class AuthService {
             professional.setCreatedAt(LocalDateTime.now());
             professional.setUpdatedAt(LocalDateTime.now());
             professionalRepository.save(professional);
-        } else if (request.getRole() == UserRole.CLIENT) {
+        } else if (request.getRole() == UserRole.HOMEOWNER) {
             Client client = new Client();
             client.setUser(savedUser);
             client.setAddress(null);
