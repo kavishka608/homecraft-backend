@@ -44,7 +44,14 @@ public class AuthService {
         user.setPhone(request.getPhone());
         user.setRole(request.getRole());
         user.setVerified(false);
-        user.setActive(true);
+
+        // NEW LOGIC: Professionals start as inactive (pending approval), Homeowners are active immediately
+        if (request.getRole() == UserRole.PROFESSIONAL) {
+            user.setActive(false); // Professional needs Admin approval
+        } else {
+            user.setActive(true); // Homeowner is active immediately
+        }
+
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -99,8 +106,9 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
+        // If a professional is not approved yet, don't let them log in!
         if (!user.isActive()) {
-            throw new RuntimeException("Account is deactivated");
+            throw new RuntimeException("Account is pending approval. Please wait for Admin approval.");
         }
 
         String token = jwtUtil.generateToken(

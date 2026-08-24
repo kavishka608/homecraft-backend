@@ -17,6 +17,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/professionals")
+@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 public class ProfessionalController {
 
@@ -36,6 +37,7 @@ public class ProfessionalController {
         List<ProfessionalProfileResponse> professionals = professionalService.getProfessionalsByType(type);
         return ResponseEntity.ok(ApiResponse.success("Professionals retrieved successfully", professionals));
     }
+
 
     @GetMapping("/available")
     public ResponseEntity<ApiResponse<List<ProfessionalProfileResponse>>> getAvailableProfessionals() {
