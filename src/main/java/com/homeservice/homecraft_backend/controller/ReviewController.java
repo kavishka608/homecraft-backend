@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/reviews")
+@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 public class ReviewController {
 
@@ -20,13 +21,14 @@ public class ReviewController {
     private final JwtUtil jwtUtil;
 
     // Add review (Protected - Client only)
-    @PostMapping("/project/{projectId}")
+    // CHANGED: Now takes professionalId instead of projectId
+    @PostMapping("/professional/{professionalId}")
     public ResponseEntity<ApiResponse<ReviewResponse>> addReview(
-            @PathVariable Long projectId,
+            @PathVariable Long professionalId,
             @RequestHeader("Authorization") String authHeader,
             @RequestBody ReviewRequest request) {
         Long userId = extractUserId(authHeader);
-        ReviewResponse review = reviewService.addReview(projectId, userId, request);
+        ReviewResponse review = reviewService.addReview(professionalId, userId, request);
         return ResponseEntity.ok(ApiResponse.success("Review added successfully", review));
     }
 

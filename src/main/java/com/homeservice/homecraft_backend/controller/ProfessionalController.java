@@ -12,8 +12,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/professionals")
@@ -23,6 +29,9 @@ public class ProfessionalController {
 
     private final ProfessionalService professionalService;
     private final JwtUtil jwtUtil;
+
+    // Directory for storing profile pictures
+    private static final String UPLOAD_DIR = "uploads/profile-pictures/";
 
     // Public endpoints
     @GetMapping
@@ -75,6 +84,29 @@ public class ProfessionalController {
         Long userId = extractUserId(authHeader);
         ProfessionalProfileResponse updated = professionalService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+    }
+
+    // NEW: Upload Profile Picture
+    @PostMapping("/upload-profile-picture")
+    public ResponseEntity<ApiResponse<ProfessionalProfileResponse>> uploadProfilePicture(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("file") MultipartFile file) throws IOException {
+
+        Long userId = extractUserId(authHeader);
+
+        // Save the file
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        Path filePath = Paths.get(UPLOAD_DIR + fileName);
+        Files.createDirectories(filePath.getParent());
+        file.transferTo(filePath);
+
+        // Create the full URL for the profile picture
+        String imageUrl = "http://localhost:8080/uploads/profile-pictures/" + fileName;
+
+        // Update the professional's profile picture in the database
+        ProfessionalProfileResponse updated = professionalService.updateProfilePicture(userId, imageUrl);
+
+        return ResponseEntity.ok(ApiResponse.success("Profile picture updated successfully", updated));
     }
 
     @PutMapping("/availability")

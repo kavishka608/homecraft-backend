@@ -36,7 +36,7 @@ public class Project {
     private String description;
 
     @Column(name = "project_type")
-    private String projectType;  // NEW_CONSTRUCTION, RENOVATION, FINISHING
+    private String projectType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "professional_type_needed")
@@ -56,7 +56,11 @@ public class Project {
     @Column(name = "expected_end_date")
     private LocalDate expectedEndDate;
 
-    private String status = "OPEN";  // OPEN, IN_PROGRESS, COMPLETED, CANCELLED
+    private String status = "OPEN";
+
+    // NEW FIELD: Is this project approved by Admin?
+    @Column(name = "is_approved")
+    private Boolean isApproved = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -76,5 +80,14 @@ public class Project {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // MANUAL METHODS (So IntelliJ can find them!)
+    public void setApproved(Boolean approved) {
+        this.isApproved = approved;
+    }
+
+    public Boolean getApproved() {
+        return this.isApproved;
     }
 }

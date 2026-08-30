@@ -119,6 +119,17 @@ public class ProfessionalService {
         return mapToResponse(professional);
     }
 
+    // NEW: Update Profile Picture
+    @Transactional
+    public ProfessionalProfileResponse updateProfilePicture(Long userId, String imageUrl) {
+        Professional professional = professionalRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Professional profile not found"));
+
+        professional.setProfilePicture(imageUrl);
+        professionalRepository.save(professional);
+        return mapToResponse(professional);
+    }
+
     // Helper method to map Entity to Response DTO
     private ProfessionalProfileResponse mapToResponse(Professional professional) {
         ProfessionalProfileResponse response = new ProfessionalProfileResponse();

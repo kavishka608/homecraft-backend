@@ -82,13 +82,22 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success("Project updated successfully", project));
     }
 
-    // COMPLETE PROJECT ENDPOINT - NEW
+    // COMPLETE PROJECT ENDPOINT
     @PutMapping("/{id}/complete")
     public ResponseEntity<ApiResponse<ProjectResponse>> completeProject(
             @PathVariable Long id,
             @RequestHeader("Authorization") String authHeader) {
         ProjectResponse project = projectService.completeProject(id);
         return ResponseEntity.ok(ApiResponse.success("Project completed successfully", project));
+    }
+
+    // NEW: Admin Approve Project Endpoint
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<ApiResponse<ProjectResponse>> approveProject(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        ProjectResponse project = projectService.approveProject(id);
+        return ResponseEntity.ok(ApiResponse.success("Project approved successfully", project));
     }
 
     @PostMapping("/search")

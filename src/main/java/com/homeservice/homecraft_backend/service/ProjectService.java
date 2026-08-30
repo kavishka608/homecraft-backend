@@ -52,6 +52,10 @@ public class ProjectService {
         project.setExpectedStartDate(request.getExpectedStartDate());
         project.setExpectedEndDate(request.getExpectedEndDate());
         project.setStatus("OPEN");
+
+        // NEW: Set to false (Admin needs to approve)
+        project.setApproved(false);
+
         project.setCreatedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
 
@@ -142,7 +146,6 @@ public class ProjectService {
 
         Project updatedProject = projectRepository.save(project);
 
-        // Send notification to professional if assigned
         if (project.getProfessional() != null) {
             User professional = project.getProfessional().getUser();
             notificationService.notifyProjectCompleted(
@@ -157,6 +160,17 @@ public class ProjectService {
         return mapToResponse(updatedProject);
     }
 
+    // NEW: Approve Project
+    @Transactional
+    public ProjectResponse approveProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+        project.setApproved(true);
+        project.setUpdatedAt(LocalDateTime.now());
+        Project updatedProject = projectRepository.save(project);
+        return mapToResponse(updatedProject);
+    }
+
     @Transactional
     public void deleteProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
@@ -164,11 +178,9 @@ public class ProjectService {
         projectRepository.delete(project);
     }
 
-    // Search projects with filters
     public Page<ProjectResponse> searchProjects(ProjectSearchRequest request) {
         Specification<Project> spec = (root, query, cb) -> cb.conjunction();
 
-        // Filter by keyword (title, description)
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             spec = spec.and((root, query, cb) -> {
                 String keyword = "%" + request.getKeyword().toLowerCase() + "%";
@@ -179,49 +191,42 @@ public class ProjectService {
             });
         }
 
-        // Filter by project type
         if (request.getProjectType() != null && !request.getProjectType().isEmpty()) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(cb.lower(root.get("projectType")), request.getProjectType().toLowerCase())
             );
         }
 
-        // Filter by professional type needed
         if (request.getProfessionalTypeNeeded() != null) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.get("professionalTypeNeeded"), request.getProfessionalTypeNeeded())
             );
         }
 
-        // Filter by location
         if (request.getLocation() != null && !request.getLocation().isEmpty()) {
             spec = spec.and((root, query, cb) ->
                     cb.like(cb.lower(root.get("location")), "%" + request.getLocation().toLowerCase() + "%")
             );
         }
 
-        // Filter by min budget
         if (request.getMinBudget() != null) {
             spec = spec.and((root, query, cb) ->
                     cb.greaterThanOrEqualTo(root.get("budgetMin"), request.getMinBudget())
             );
         }
 
-        // Filter by max budget
         if (request.getMaxBudget() != null) {
             spec = spec.and((root, query, cb) ->
                     cb.lessThanOrEqualTo(root.get("budgetMax"), request.getMaxBudget())
             );
         }
 
-        // Filter by status
         if (request.getStatus() != null && !request.getStatus().isEmpty()) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(cb.upper(root.get("status")), request.getStatus().toUpperCase())
             );
         }
 
-        // Sort
         Sort sort = Sort.unsorted();
         if (request.getSortBy() != null && !request.getSortBy().isEmpty()) {
             Sort.Direction direction = "desc".equalsIgnoreCase(request.getSortDirection())
@@ -248,10 +253,11 @@ public class ProjectService {
         response.setExpectedStartDate(project.getExpectedStartDate());
         response.setExpectedEndDate(project.getExpectedEndDate());
         response.setStatus(project.getStatus());
+        response.setApproved(project.getApproved()); // <--- THIS CALLS project.getApproved()
+
         response.setCreatedAt(project.getCreatedAt());
         response.setUpdatedAt(project.getUpdatedAt());
 
-        // Map client to UserResponse
         Client client = project.getClient();
         UserResponse clientResponse = new UserResponse();
         clientResponse.setId(client.getId());

@@ -28,4 +28,10 @@ public class ProjectResponse {
     private UserResponse client;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean approved;
+
+    // MANUAL SETTER (So IntelliJ can find it!)
+    public void setApproved(Boolean approved) {
+        this.approved = approved;
+    }
 }
