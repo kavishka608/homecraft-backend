@@ -35,6 +35,8 @@ public class ProjectService {
     private final ProfessionalRepository professionalRepository;
     private final NotificationService notificationService;
 
+    // ============ CREATE ============
+
     @Transactional
     public ProjectResponse createProject(Long userId, ProjectRequest request) {
         Client client = clientRepository.findByUserId(userId)
@@ -52,13 +54,15 @@ public class ProjectService {
         project.setExpectedStartDate(request.getExpectedStartDate());
         project.setExpectedEndDate(request.getExpectedEndDate());
         project.setStatus("OPEN");
-        project.setApproved(false);
+        project.setApproved(false); // ← Pending admin approval
         project.setCreatedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
 
         Project savedProject = projectRepository.save(project);
         return mapToResponse(savedProject);
     }
+
+    // ============ PUBLIC READ ============
 
     public List<ProjectResponse> getAllProjects() {
         return projectRepository.findAll().stream()
@@ -68,7 +72,7 @@ public class ProjectService {
 
     public List<ProjectResponse> getOpenProjects() {
         return projectRepository.findByStatus("OPEN").stream()
-                .filter(p -> Boolean.TRUE.equals(p.getApproved()))
+                .filter(p -> Boolean.TRUE.equals(p.getApproved())) // ← Only approved
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -100,35 +104,36 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
-    // ADMIN: Get all pending projects
+    // ============ ADMIN ============
+
     public List<ProjectResponse> getPendingProjects() {
         return projectRepository.findByApprovedFalse().stream()
+                .filter(p -> !"CANCELLED".equals(p.getStatus())) // Don't show already-rejected
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    // ADMIN: Approve a project
     @Transactional
     public ProjectResponse approveProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         project.setApproved(true);
+        project.setStatus("OPEN"); // ← Ensure it's open
         project.setUpdatedAt(LocalDateTime.now());
-        Project updatedProject = projectRepository.save(project);
-        return mapToResponse(updatedProject);
+        return mapToResponse(projectRepository.save(project));
     }
 
-    // ADMIN: Reject a project
     @Transactional
     public ProjectResponse rejectProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         project.setApproved(false);
-        project.setStatus("CANCELLED");
+        project.setStatus("CANCELLED"); // ← Mark as cancelled
         project.setUpdatedAt(LocalDateTime.now());
-        Project updatedProject = projectRepository.save(project);
-        return mapToResponse(updatedProject);
+        return mapToResponse(projectRepository.save(project));
     }
+
+    // ============ UPDATE ============
 
     @Transactional
     public ProjectResponse updateProject(Long projectId, ProjectUpdateRequest request) {
@@ -145,8 +150,7 @@ public class ProjectService {
         if (request.getStatus() != null) project.setStatus(request.getStatus());
 
         project.setUpdatedAt(LocalDateTime.now());
-        Project updatedProject = projectRepository.save(project);
-        return mapToResponse(updatedProject);
+        return mapToResponse(projectRepository.save(project));
     }
 
     @Transactional
@@ -178,6 +182,8 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         projectRepository.delete(project);
     }
+
+    // ============ SEARCH ============
 
     public Page<ProjectResponse> searchProjects(ProjectSearchRequest request) {
         Specification<Project> spec = (root, query, cb) -> cb.conjunction();
@@ -234,6 +240,8 @@ public class ProjectService {
 
         return projects.map(this::mapToResponse);
     }
+
+    // ============ MAPPER ============
 
     private ProjectResponse mapToResponse(Project project) {
         ProjectResponse response = new ProjectResponse();
