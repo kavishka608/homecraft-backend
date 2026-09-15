@@ -25,13 +25,8 @@ public class ProjectResponse {
     private LocalDate expectedStartDate;
     private LocalDate expectedEndDate;
     private String status;
+    private Boolean approved;   // ← Simple field, Lombok generates getters/setters
     private UserResponse client;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Boolean approved;
-
-    // MANUAL SETTER (So IntelliJ can find it!)
-    public void setApproved(Boolean approved) {
-        this.approved = approved;
-    }
 }

@@ -47,7 +47,6 @@ public class ProfessionalController {
         return ResponseEntity.ok(ApiResponse.success("Professionals retrieved successfully", professionals));
     }
 
-
     @GetMapping("/available")
     public ResponseEntity<ApiResponse<List<ProfessionalProfileResponse>>> getAvailableProfessionals() {
         List<ProfessionalProfileResponse> professionals = professionalService.getAvailableProfessionals();
@@ -60,7 +59,7 @@ public class ProfessionalController {
         return ResponseEntity.ok(ApiResponse.success("Professional retrieved successfully", professional));
     }
 
-    // SEARCH PROFESSIONALS ENDPOINT - ADD THIS
+    // SEARCH PROFESSIONALS ENDPOINT
     @PostMapping("/search")
     public ResponseEntity<ApiResponse<Page<ProfessionalProfileResponse>>> searchProfessionals(
             @RequestBody ProfessionalSearchRequest request) {
@@ -86,7 +85,7 @@ public class ProfessionalController {
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
     }
 
-    // NEW: Upload Profile Picture
+    // Upload Profile Picture
     @PostMapping("/upload-profile-picture")
     public ResponseEntity<ApiResponse<ProfessionalProfileResponse>> uploadProfilePicture(
             @RequestHeader("Authorization") String authHeader,

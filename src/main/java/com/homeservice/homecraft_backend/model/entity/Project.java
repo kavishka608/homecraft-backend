@@ -58,9 +58,8 @@ public class Project {
 
     private String status = "OPEN";
 
-    // NEW FIELD: Is this project approved by Admin?
     @Column(name = "is_approved")
-    private Boolean isApproved = false;
+    private Boolean approved = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -75,19 +74,13 @@ public class Project {
         if (status == null) {
             status = "OPEN";
         }
+        if (approved == null) {
+            approved = false;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-
-    // MANUAL METHODS (So IntelliJ can find them!)
-    public void setApproved(Boolean approved) {
-        this.isApproved = approved;
-    }
-
-    public Boolean getApproved() {
-        return this.isApproved;
     }
 }

@@ -52,10 +52,7 @@ public class ProjectService {
         project.setExpectedStartDate(request.getExpectedStartDate());
         project.setExpectedEndDate(request.getExpectedEndDate());
         project.setStatus("OPEN");
-
-        // NEW: Set to false (Admin needs to approve)
         project.setApproved(false);
-
         project.setCreatedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
 
@@ -71,6 +68,7 @@ public class ProjectService {
 
     public List<ProjectResponse> getOpenProjects() {
         return projectRepository.findByStatus("OPEN").stream()
+                .filter(p -> Boolean.TRUE.equals(p.getApproved()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -83,6 +81,7 @@ public class ProjectService {
 
     public List<ProjectResponse> getOpenProjectsByType(ProfessionalType type) {
         return projectRepository.findByStatusAndProfessionalTypeNeeded("OPEN", type).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getApproved()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -101,37 +100,51 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    // ADMIN: Get all pending projects
+    public List<ProjectResponse> getPendingProjects() {
+        return projectRepository.findByApprovedFalse().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ADMIN: Approve a project
+    @Transactional
+    public ProjectResponse approveProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+        project.setApproved(true);
+        project.setUpdatedAt(LocalDateTime.now());
+        Project updatedProject = projectRepository.save(project);
+        return mapToResponse(updatedProject);
+    }
+
+    // ADMIN: Reject a project
+    @Transactional
+    public ProjectResponse rejectProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+        project.setApproved(false);
+        project.setStatus("CANCELLED");
+        project.setUpdatedAt(LocalDateTime.now());
+        Project updatedProject = projectRepository.save(project);
+        return mapToResponse(updatedProject);
+    }
+
     @Transactional
     public ProjectResponse updateProject(Long projectId, ProjectUpdateRequest request) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        if (request.getTitle() != null) {
-            project.setTitle(request.getTitle());
-        }
-        if (request.getDescription() != null) {
-            project.setDescription(request.getDescription());
-        }
-        if (request.getBudgetMin() != null) {
-            project.setBudgetMin(request.getBudgetMin());
-        }
-        if (request.getBudgetMax() != null) {
-            project.setBudgetMax(request.getBudgetMax());
-        }
-        if (request.getLocation() != null) {
-            project.setLocation(request.getLocation());
-        }
-        if (request.getExpectedStartDate() != null) {
-            project.setExpectedStartDate(request.getExpectedStartDate());
-        }
-        if (request.getExpectedEndDate() != null) {
-            project.setExpectedEndDate(request.getExpectedEndDate());
-        }
-        if (request.getStatus() != null) {
-            project.setStatus(request.getStatus());
-        }
-        project.setUpdatedAt(LocalDateTime.now());
+        if (request.getTitle() != null) project.setTitle(request.getTitle());
+        if (request.getDescription() != null) project.setDescription(request.getDescription());
+        if (request.getBudgetMin() != null) project.setBudgetMin(request.getBudgetMin());
+        if (request.getBudgetMax() != null) project.setBudgetMax(request.getBudgetMax());
+        if (request.getLocation() != null) project.setLocation(request.getLocation());
+        if (request.getExpectedStartDate() != null) project.setExpectedStartDate(request.getExpectedStartDate());
+        if (request.getExpectedEndDate() != null) project.setExpectedEndDate(request.getExpectedEndDate());
+        if (request.getStatus() != null) project.setStatus(request.getStatus());
 
+        project.setUpdatedAt(LocalDateTime.now());
         Project updatedProject = projectRepository.save(project);
         return mapToResponse(updatedProject);
     }
@@ -143,7 +156,6 @@ public class ProjectService {
 
         project.setStatus("COMPLETED");
         project.setUpdatedAt(LocalDateTime.now());
-
         Project updatedProject = projectRepository.save(project);
 
         if (project.getProfessional() != null) {
@@ -157,17 +169,6 @@ public class ProjectService {
             );
         }
 
-        return mapToResponse(updatedProject);
-    }
-
-    // NEW: Approve Project
-    @Transactional
-    public ProjectResponse approveProject(Long projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
-        project.setApproved(true);
-        project.setUpdatedAt(LocalDateTime.now());
-        Project updatedProject = projectRepository.save(project);
         return mapToResponse(updatedProject);
     }
 
@@ -193,38 +194,32 @@ public class ProjectService {
 
         if (request.getProjectType() != null && !request.getProjectType().isEmpty()) {
             spec = spec.and((root, query, cb) ->
-                    cb.equal(cb.lower(root.get("projectType")), request.getProjectType().toLowerCase())
-            );
+                    cb.equal(cb.lower(root.get("projectType")), request.getProjectType().toLowerCase()));
         }
 
         if (request.getProfessionalTypeNeeded() != null) {
             spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("professionalTypeNeeded"), request.getProfessionalTypeNeeded())
-            );
+                    cb.equal(root.get("professionalTypeNeeded"), request.getProfessionalTypeNeeded()));
         }
 
         if (request.getLocation() != null && !request.getLocation().isEmpty()) {
             spec = spec.and((root, query, cb) ->
-                    cb.like(cb.lower(root.get("location")), "%" + request.getLocation().toLowerCase() + "%")
-            );
+                    cb.like(cb.lower(root.get("location")), "%" + request.getLocation().toLowerCase() + "%"));
         }
 
         if (request.getMinBudget() != null) {
             spec = spec.and((root, query, cb) ->
-                    cb.greaterThanOrEqualTo(root.get("budgetMin"), request.getMinBudget())
-            );
+                    cb.greaterThanOrEqualTo(root.get("budgetMin"), request.getMinBudget()));
         }
 
         if (request.getMaxBudget() != null) {
             spec = spec.and((root, query, cb) ->
-                    cb.lessThanOrEqualTo(root.get("budgetMax"), request.getMaxBudget())
-            );
+                    cb.lessThanOrEqualTo(root.get("budgetMax"), request.getMaxBudget()));
         }
 
         if (request.getStatus() != null && !request.getStatus().isEmpty()) {
             spec = spec.and((root, query, cb) ->
-                    cb.equal(cb.upper(root.get("status")), request.getStatus().toUpperCase())
-            );
+                    cb.equal(cb.upper(root.get("status")), request.getStatus().toUpperCase()));
         }
 
         Sort sort = Sort.unsorted();
@@ -253,8 +248,7 @@ public class ProjectService {
         response.setExpectedStartDate(project.getExpectedStartDate());
         response.setExpectedEndDate(project.getExpectedEndDate());
         response.setStatus(project.getStatus());
-        response.setApproved(project.getApproved()); // <--- THIS CALLS project.getApproved()
-
+        response.setApproved(project.getApproved());
         response.setCreatedAt(project.getCreatedAt());
         response.setUpdatedAt(project.getUpdatedAt());
 

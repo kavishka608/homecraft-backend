@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -24,7 +25,8 @@ public class ProfessionalService {
     private final ProfessionalRepository professionalRepository;
     private final UserRepository userRepository;
 
-    // PUBLIC: Get ALL Approved Professionals
+    // ============ PUBLIC ============
+
     public List<ProfessionalProfileResponse> getAllProfessionals() {
         return professionalRepository.findAll()
                 .stream()
@@ -32,7 +34,7 @@ public class ProfessionalService {
                 .map(this::mapToResponse)
                 .toList();
     }
-    // Added for Admin Controller to get ALL (including pending)
+
     public List<ProfessionalProfileResponse> getAllProfessionalsForAdmin() {
         return professionalRepository.findAll()
                 .stream()
@@ -40,7 +42,6 @@ public class ProfessionalService {
                 .toList();
     }
 
-    // PUBLIC: Get Professionals by Type
     public List<ProfessionalProfileResponse> getProfessionalsByType(ProfessionalType type) {
         return professionalRepository.findAll()
                 .stream()
@@ -50,7 +51,6 @@ public class ProfessionalService {
                 .toList();
     }
 
-    // PUBLIC: Get Available Professionals
     public List<ProfessionalProfileResponse> getAvailableProfessionals() {
         return professionalRepository.findAll()
                 .stream()
@@ -60,34 +60,33 @@ public class ProfessionalService {
                 .toList();
     }
 
-    // PUBLIC: Get Professional by ID
     public ProfessionalProfileResponse getProfessionalById(Long id) {
         Professional professional = professionalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Professional not found"));
         return mapToResponse(professional);
     }
 
-    // PUBLIC: Search Professionals
     public Page<ProfessionalProfileResponse> searchProfessionals(ProfessionalSearchRequest request) {
         List<ProfessionalProfileResponse> results = professionalRepository.findAll()
                 .stream()
                 .filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
                 .filter(p -> request.getProfessionalType() == null || p.getProfessionalType() == request.getProfessionalType())
-                .filter(p -> request.getLocation() == null || p.getLocation().toLowerCase().contains(request.getLocation().toLowerCase()))
+                .filter(p -> request.getLocation() == null ||
+                        (p.getLocation() != null && p.getLocation().toLowerCase().contains(request.getLocation().toLowerCase())))
                 .map(this::mapToResponse)
                 .toList();
 
         return new PageImpl<>(results);
     }
 
-    // PROTECTED: Get My Profile
+    // ============ PROTECTED ============
+
     public ProfessionalProfileResponse getMyProfile(Long userId) {
         Professional professional = professionalRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Professional profile not found"));
         return mapToResponse(professional);
     }
 
-    // PROTECTED: Update My Profile
     @Transactional
     public ProfessionalProfileResponse updateProfile(Long userId, ProfessionalProfileUpdateRequest request) {
         Professional professional = professionalRepository.findByUserId(userId)
@@ -108,7 +107,6 @@ public class ProfessionalService {
         return mapToResponse(professional);
     }
 
-    // PROTECTED: Update Availability
     @Transactional
     public ProfessionalProfileResponse updateAvailability(Long userId, boolean isAvailable) {
         Professional professional = professionalRepository.findByUserId(userId)
@@ -119,18 +117,68 @@ public class ProfessionalService {
         return mapToResponse(professional);
     }
 
-    // NEW: Update Profile Picture
     @Transactional
     public ProfessionalProfileResponse updateProfilePicture(Long userId, String imageUrl) {
         Professional professional = professionalRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Professional profile not found"));
 
         professional.setProfilePicture(imageUrl);
+        professional.setUpdatedAt(LocalDateTime.now());
         professionalRepository.save(professional);
         return mapToResponse(professional);
     }
 
-    // Helper method to map Entity to Response DTO
+    // ============ ADMIN ============
+
+    public List<ProfessionalProfileResponse> getPendingProfessionals() {
+        return professionalRepository.findAll()
+                .stream()
+                .filter(p -> p.getVerificationStatus() == VerificationStatus.PENDING)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse approveProfessional(Long professionalId) {
+        Professional professional = professionalRepository.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+
+        professional.setVerificationStatus(VerificationStatus.APPROVED);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+
+        User user = professional.getUser();
+        user.setActive(true);
+        userRepository.save(user);
+
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse rejectProfessional(Long professionalId) {
+        Professional professional = professionalRepository.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+
+        professional.setVerificationStatus(VerificationStatus.REJECTED);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse updateVerificationStatus(Long professionalId, VerificationStatus status) {
+        Professional professional = professionalRepository.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+
+        professional.setVerificationStatus(status);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+        return mapToResponse(professional);
+    }
+
+    // ============ MAPPER ============
+
     private ProfessionalProfileResponse mapToResponse(Professional professional) {
         ProfessionalProfileResponse response = new ProfessionalProfileResponse();
         response.setId(professional.getId());

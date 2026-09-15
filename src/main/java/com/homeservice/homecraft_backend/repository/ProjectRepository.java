@@ -2,11 +2,11 @@ package com.homeservice.homecraft_backend.repository;
 
 import com.homeservice.homecraft_backend.model.entity.Project;
 import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -16,5 +16,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByStatus(String status);
     List<Project> findByProfessionalTypeNeeded(ProfessionalType professionalType);
     List<Project> findByStatusAndProfessionalTypeNeeded(String status, ProfessionalType professionalType);
+    List<Project> findByApprovedFalse();
+    List<Project> findByApprovedTrue();
     Page<Project> findAll(Specification<Project> spec, Pageable pageable);
 }
