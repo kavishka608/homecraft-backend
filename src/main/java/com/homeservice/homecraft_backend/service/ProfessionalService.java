@@ -1,0 +1,202 @@
+package com.homeservice.homecraft_backend.service;
+
+import com.homeservice.homecraft_backend.model.dto.request.ProfessionalProfileUpdateRequest;
+import com.homeservice.homecraft_backend.model.dto.request.ProfessionalSearchRequest;
+import com.homeservice.homecraft_backend.model.dto.response.ProfessionalProfileResponse;
+import com.homeservice.homecraft_backend.model.entity.Professional;
+import com.homeservice.homecraft_backend.model.entity.User;
+import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
+import com.homeservice.homecraft_backend.model.enums.VerificationStatus;
+import com.homeservice.homecraft_backend.repository.ProfessionalRepository;
+import com.homeservice.homecraft_backend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ProfessionalService {
+
+    private final ProfessionalRepository professionalRepository;
+    private final UserRepository userRepository;
+
+    // ============ PUBLIC ============
+
+    public List<ProfessionalProfileResponse> getAllProfessionals() {
+        return professionalRepository.findAll()
+                .stream()
+                .filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<ProfessionalProfileResponse> getAllProfessionalsForAdmin() {
+        return professionalRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<ProfessionalProfileResponse> getProfessionalsByType(ProfessionalType type) {
+        return professionalRepository.findAll()
+                .stream()
+                .filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
+                .filter(p -> p.getProfessionalType() == type)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public List<ProfessionalProfileResponse> getAvailableProfessionals() {
+        return professionalRepository.findAll()
+                .stream()
+                .filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
+                .filter(Professional::isAvailable)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public ProfessionalProfileResponse getProfessionalById(Long id) {
+        Professional professional = professionalRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+        return mapToResponse(professional);
+    }
+
+    public Page<ProfessionalProfileResponse> searchProfessionals(ProfessionalSearchRequest request) {
+        List<ProfessionalProfileResponse> results = professionalRepository.findAll()
+                .stream()
+                .filter(p -> p.getVerificationStatus() == VerificationStatus.APPROVED)
+                .filter(p -> request.getProfessionalType() == null || p.getProfessionalType() == request.getProfessionalType())
+                .filter(p -> request.getLocation() == null ||
+                        (p.getLocation() != null && p.getLocation().toLowerCase().contains(request.getLocation().toLowerCase())))
+                .map(this::mapToResponse)
+                .toList();
+
+        return new PageImpl<>(results);
+    }
+
+    // ============ PROTECTED ============
+
+    public ProfessionalProfileResponse getMyProfile(Long userId) {
+        Professional professional = professionalRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Professional profile not found"));
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse updateProfile(Long userId, ProfessionalProfileUpdateRequest request) {
+        Professional professional = professionalRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Professional profile not found"));
+
+        professional.setProfessionalType(request.getProfessionalType());
+        professional.setYearsExperience(request.getYearsExperience());
+        professional.setBio(request.getBio());
+        professional.setLocation(request.getLocation());
+        professional.setHourlyRate(request.getHourlyRate());
+
+        User user = professional.getUser();
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        userRepository.save(user);
+
+        professionalRepository.save(professional);
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse updateAvailability(Long userId, boolean isAvailable) {
+        Professional professional = professionalRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Professional profile not found"));
+
+        professional.setAvailable(isAvailable);
+        professionalRepository.save(professional);
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse updateProfilePicture(Long userId, String imageUrl) {
+        Professional professional = professionalRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Professional profile not found"));
+
+        professional.setProfilePicture(imageUrl);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+        return mapToResponse(professional);
+    }
+
+    // ============ ADMIN ============
+
+    public List<ProfessionalProfileResponse> getPendingProfessionals() {
+        return professionalRepository.findAll()
+                .stream()
+                .filter(p -> p.getVerificationStatus() == VerificationStatus.PENDING)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse approveProfessional(Long professionalId) {
+        Professional professional = professionalRepository.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+
+        professional.setVerificationStatus(VerificationStatus.APPROVED);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+
+        User user = professional.getUser();
+        user.setActive(true);
+        userRepository.save(user);
+
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse rejectProfessional(Long professionalId) {
+        Professional professional = professionalRepository.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+
+        professional.setVerificationStatus(VerificationStatus.REJECTED);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+
+        return mapToResponse(professional);
+    }
+
+    @Transactional
+    public ProfessionalProfileResponse updateVerificationStatus(Long professionalId, VerificationStatus status) {
+        Professional professional = professionalRepository.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found"));
+
+        professional.setVerificationStatus(status);
+        professional.setUpdatedAt(LocalDateTime.now());
+        professionalRepository.save(professional);
+        return mapToResponse(professional);
+    }
+
+    // ============ MAPPER ============
+
+    private ProfessionalProfileResponse mapToResponse(Professional professional) {
+        ProfessionalProfileResponse response = new ProfessionalProfileResponse();
+        response.setId(professional.getId());
+        response.setEmail(professional.getUser().getEmail());
+        response.setFullName(professional.getUser().getFullName());
+        response.setPhone(professional.getUser().getPhone());
+        response.setProfessionalType(professional.getProfessionalType());
+        response.setYearsExperience(professional.getYearsExperience());
+        response.setHourlyRate(professional.getHourlyRate());
+        response.setBio(professional.getBio());
+        response.setLocation(professional.getLocation());
+        response.setRatingAverage(professional.getRatingAverage());
+        response.setTotalReviews(professional.getTotalReviews());
+        response.setLicenseNumber(professional.getLicenseNumber());
+        response.setVerificationStatus(professional.getVerificationStatus());
+        response.setProfilePicture(professional.getProfilePicture());
+        response.setAvailable(professional.isAvailable());
+        response.setCreatedAt(professional.getCreatedAt());
+        return response;
+    }
+}

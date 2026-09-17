@@ -1,0 +1,48 @@
+### Health Check
+GET http://localhost:8080/api/test/health
+
+### Register Client
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "John Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "phone": "1234567890",
+  "role": "CLIENT"
+}
+
+### Register Professional
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Jane Smith",
+  "email": "jane@example.com",
+  "password": "password123",
+  "phone": "9876543210",
+  "role": "PROFESSIONAL",
+  "professionalType": "PLANNER",
+  "yearsExperience": 5,
+  "bio": "Experienced house planner with 5 years of experience",
+  "location": "New York"
+}
+
+### Login (Client)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+
+### Login (Professional)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "password123"
+}
