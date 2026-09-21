@@ -7,7 +7,6 @@ import com.homeservice.homecraft_backend.model.dto.response.ProjectResponse;
 import com.homeservice.homecraft_backend.model.dto.response.UserResponse;
 import com.homeservice.homecraft_backend.model.entity.Client;
 import com.homeservice.homecraft_backend.model.entity.Project;
-import com.homeservice.homecraft_backend.model.entity.Professional;
 import com.homeservice.homecraft_backend.model.entity.User;
 import com.homeservice.homecraft_backend.model.enums.ProfessionalType;
 import com.homeservice.homecraft_backend.repository.ClientRepository;
@@ -35,8 +34,9 @@ public class ProjectService {
     private final ProfessionalRepository professionalRepository;
     private final NotificationService notificationService;
 
-    // ============ CREATE ============
-
+    // ==================================================
+    // CREATE
+    // ==================================================
     @Transactional
     public ProjectResponse createProject(Long userId, ProjectRequest request) {
         Client client = clientRepository.findByUserId(userId)
@@ -54,16 +54,16 @@ public class ProjectService {
         project.setExpectedStartDate(request.getExpectedStartDate());
         project.setExpectedEndDate(request.getExpectedEndDate());
         project.setStatus("OPEN");
-        project.setApproved(false); // ← Pending admin approval
+        project.setApproved(false);           // ← Pending admin approval
         project.setCreatedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
 
-        Project savedProject = projectRepository.save(project);
-        return mapToResponse(savedProject);
+        return mapToResponse(projectRepository.save(project));
     }
 
-    // ============ PUBLIC READ ============
-
+    // ==================================================
+    // PUBLIC READ
+    // ==================================================
     public List<ProjectResponse> getAllProjects() {
         return projectRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -72,13 +72,14 @@ public class ProjectService {
 
     public List<ProjectResponse> getOpenProjects() {
         return projectRepository.findByStatus("OPEN").stream()
-                .filter(p -> Boolean.TRUE.equals(p.getApproved())) // ← Only approved
+                .filter(p -> Boolean.TRUE.equals(p.getApproved()))   // ← Only approved
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<ProjectResponse> getProjectsByType(ProfessionalType type) {
         return projectRepository.findByProfessionalTypeNeeded(type).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getApproved()))   // ← Only approved
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -104,11 +105,12 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
-    // ============ ADMIN ============
-
+    // ==================================================
+    // ADMIN
+    // ==================================================
     public List<ProjectResponse> getPendingProjects() {
         return projectRepository.findByApprovedFalse().stream()
-                .filter(p -> !"CANCELLED".equals(p.getStatus())) // Don't show already-rejected
+                .filter(p -> !"CANCELLED".equals(p.getStatus()))     // ← Hide already rejected
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -118,7 +120,7 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         project.setApproved(true);
-        project.setStatus("OPEN"); // ← Ensure it's open
+        project.setStatus("OPEN");           // ← Force open so professionals can bid
         project.setUpdatedAt(LocalDateTime.now());
         return mapToResponse(projectRepository.save(project));
     }
@@ -128,13 +130,14 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         project.setApproved(false);
-        project.setStatus("CANCELLED"); // ← Mark as cancelled
+        project.setStatus("CANCELLED");      // ← Client will see "Rejected by Admin"
         project.setUpdatedAt(LocalDateTime.now());
         return mapToResponse(projectRepository.save(project));
     }
 
-    // ============ UPDATE ============
-
+    // ==================================================
+    // UPDATE
+    // ==================================================
     @Transactional
     public ProjectResponse updateProject(Long projectId, ProjectUpdateRequest request) {
         Project project = projectRepository.findById(projectId)
@@ -160,20 +163,17 @@ public class ProjectService {
 
         project.setStatus("COMPLETED");
         project.setUpdatedAt(LocalDateTime.now());
-        Project updatedProject = projectRepository.save(project);
+        Project updated = projectRepository.save(project);
 
         if (project.getProfessional() != null) {
-            User professional = project.getProfessional().getUser();
+            User pro = project.getProfessional().getUser();
             notificationService.notifyProjectCompleted(
-                    professional.getId(),
-                    professional.getEmail(),
-                    professional.getFullName(),
-                    project.getTitle(),
-                    project.getId()
+                    pro.getId(), pro.getEmail(), pro.getFullName(),
+                    project.getTitle(), project.getId()
             );
         }
 
-        return mapToResponse(updatedProject);
+        return mapToResponse(updated);
     }
 
     @Transactional
@@ -183,8 +183,9 @@ public class ProjectService {
         projectRepository.delete(project);
     }
 
-    // ============ SEARCH ============
-
+    // ==================================================
+    // SEARCH
+    // ==================================================
     public Page<ProjectResponse> searchProjects(ProjectSearchRequest request) {
         Specification<Project> spec = (root, query, cb) -> cb.conjunction();
 
@@ -197,32 +198,26 @@ public class ProjectService {
                 );
             });
         }
-
         if (request.getProjectType() != null && !request.getProjectType().isEmpty()) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(cb.lower(root.get("projectType")), request.getProjectType().toLowerCase()));
         }
-
         if (request.getProfessionalTypeNeeded() != null) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.get("professionalTypeNeeded"), request.getProfessionalTypeNeeded()));
         }
-
         if (request.getLocation() != null && !request.getLocation().isEmpty()) {
             spec = spec.and((root, query, cb) ->
                     cb.like(cb.lower(root.get("location")), "%" + request.getLocation().toLowerCase() + "%"));
         }
-
         if (request.getMinBudget() != null) {
             spec = spec.and((root, query, cb) ->
                     cb.greaterThanOrEqualTo(root.get("budgetMin"), request.getMinBudget()));
         }
-
         if (request.getMaxBudget() != null) {
             spec = spec.and((root, query, cb) ->
                     cb.lessThanOrEqualTo(root.get("budgetMax"), request.getMaxBudget()));
         }
-
         if (request.getStatus() != null && !request.getStatus().isEmpty()) {
             spec = spec.and((root, query, cb) ->
                     cb.equal(cb.upper(root.get("status")), request.getStatus().toUpperCase()));
@@ -237,12 +232,12 @@ public class ProjectService {
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
         Page<Project> projects = projectRepository.findAll(spec, pageable);
-
         return projects.map(this::mapToResponse);
     }
 
-    // ============ MAPPER ============
-
+    // ==================================================
+    // MAPPER
+    // ==================================================
     private ProjectResponse mapToResponse(Project project) {
         ProjectResponse response = new ProjectResponse();
         response.setId(project.getId());
