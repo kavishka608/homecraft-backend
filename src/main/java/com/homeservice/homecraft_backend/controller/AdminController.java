@@ -7,6 +7,8 @@ import com.homeservice.homecraft_backend.service.ProfessionalService;
 import com.homeservice.homecraft_backend.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import com.homeservice.homecraft_backend.service.UserService;
+import com.homeservice.homecraft_backend.model.dto.response.UserResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +21,7 @@ public class AdminController {
 
     private final ProfessionalService professionalService;
     private final ProjectService projectService;
+    private final UserService userService;
 
     // ============ PROFESSIONALS ============
 
@@ -54,6 +57,12 @@ public class AdminController {
     public ResponseEntity<ApiResponse<ProjectResponse>> approveProject(@PathVariable Long projectId) {
         ProjectResponse project = projectService.approveProject(projectId);
         return ResponseEntity.ok(ApiResponse.success("Project approved successfully", project));
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
+        List<UserResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
     }
 
     @PutMapping("/projects/{projectId}/reject")
