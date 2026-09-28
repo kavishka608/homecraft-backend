@@ -8,9 +8,9 @@ spring:
       max-request-size: 10MB
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/homecraft_db
-    username: postgres
-    password: 1234
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/homecraft_db}
+    username: ${DATASOURCE_USERNAME:postgres}
+    password: ${DATASOURCE_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -20,13 +20,13 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-    show-sql: true
+    show-sql: ${SHOW_SQL:false}
 
   mail:
     host: smtp.gmail.com
     port: 587
-    username: kavishkadewduni@gmail.com
-    password: jvbs ynfx rbgi yorb
+    username: ${SPRING_MAIL_USERNAME:kavishkadewduni@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:jvbs ynfx rbgi yorb}
     properties:
       mail:
         smtp:
@@ -36,9 +36,9 @@ spring:
             required: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 logging:
   level:
-    com.homeservice: DEBUG
-    org.springframework.security: DEBUG
+    com.homeservice: ${LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:INFO}
