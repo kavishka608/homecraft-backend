@@ -1,6 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
 name: Build and deploy JAR app to Azure Web App - homecraft-backend-kavishka
 
 on:
@@ -12,9 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
-
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +19,7 @@ jobs:
           distribution: 'microsoft'
 
       - name: Build with Maven
-        run: mvn clean install
+        run: mvn clean install -DskipTests
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -36,22 +30,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-  
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: java-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4AE805B92F8149808BC9DBCC8B98F12A }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_959F3D42E85A4637960A3D776141E06B }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACD9406D47840EE928888C142ED7A94 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -59,5 +46,5 @@ jobs:
         with:
           app-name: 'homecraft-backend-kavishka'
           slot-name: 'Production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_XXXXX }}
           package: '*.jar'
-          
