@@ -46,5 +46,5 @@ jobs:
         with:
           app-name: 'homecraft-backend-kavishka'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_XXXXX }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9E58734F41A948D1B4D6F74B10EEF845 }}
           package: '*.jar'
